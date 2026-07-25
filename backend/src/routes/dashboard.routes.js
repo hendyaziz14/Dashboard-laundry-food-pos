@@ -29,11 +29,28 @@ router.get("/summary", requireAuth, (req, res) => {
 
   const recentLaundry = [...db.laundryOrders]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
+    .slice(0, 5)
+    .map((order) => ({
+      ...order,
+      customerName: order.customerName || "Pelanggan",
+      orderNo: order.orderNo || "-",
+      items: order.items || [],
+      total: Number(order.total) || 0,
+      status: order.status || "Diterima",
+      serviceName: order.items?.[0]?.serviceName || "Layanan",
+      weightKg: order.items?.[0]?.weightKg || 0,
+    }));
 
   const recentFood = [...db.foodOrders]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
+    .slice(0, 5)
+    .map((order) => ({
+      ...order,
+      orderNo: order.orderNo || "-",
+      items: order.items || [],
+      total: Number(order.total) || 0,
+      paymentMethod: order.paymentMethod || "Cash",
+    }));
 
   res.json({
     businessName: db.settings.businessName,

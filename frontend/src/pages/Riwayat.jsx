@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TbRefresh } from "react-icons/tb";
 import Layout from "../components/Layout.jsx";
 import Topbar from "../components/Topbar.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -23,15 +24,35 @@ export default function Riwayat() {
   const [foodOrders, setFoodOrders] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
 
-  useEffect(() => {
+  async function handleSync() {
+    setSyncing(true);
+    setSyncMessage("");
+    try {
+      const { data } = await api.post("/sync/orders");
+      setSyncMessage(`Sinkronisasi selesai: ${data.inserted} data baru ditambahkan, ${data.skipped} dilewati.`);
+      await loadOrders();
+    } catch (err) {
+      setSyncMessage(err.response?.data?.message || "Gagal sinkronisasi.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function loadOrders() {
     setLoading(true);
-    Promise.all([api.get("/laundry"), api.get("/food/orders")])
+    return Promise.all([api.get("/laundry"), api.get("/food/orders")])
       .then(([laundryRes, foodRes]) => {
         setLaundryOrders(laundryRes.data.orders);
         setFoodOrders(foodRes.data.orders);
       })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadOrders();
   }, []);
 
   const q = search.toLowerCase();
@@ -67,12 +88,23 @@ export default function Riwayat() {
               Makanan
             </button>
           </div>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari nama / no. pesanan..."
-            className="w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
-          />
+          <div className="flex items-center gap-2">
+            {syncMessage && <p className="text-xs text-slate-500">{syncMessage}</p>}
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 disabled:opacity-50"
+            >
+              <TbRefresh size={16} className={syncing ? "animate-spin" : ""} />
+              {syncing ? "Menyinkronkan..." : "Sinkronkan"}
+            </button>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama / no. pesanan..."
+              className="w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
+            />
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

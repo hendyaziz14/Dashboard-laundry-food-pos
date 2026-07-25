@@ -43,15 +43,20 @@ export default function Menu() {
   async function handleSave(e) {
     e.preventDefault();
     setError("");
-    if (!form.name || !form.category || form.price === "") {
+    const name = form.name?.trim();
+    const price = Number(form.price);
+
+    if (!name || !form.category || Number.isNaN(price) || price < 0) {
       setError("Nama, kategori, dan harga wajib diisi.");
       return;
     }
+
     try {
+      const payload = { name, category: form.category, price };
       if (editingId) {
-        await api.put(`/food/products/${editingId}`, form);
+        await api.put(`/food/products/${editingId}`, payload);
       } else {
-        await api.post("/food/products", form);
+        await api.post("/food/products", payload);
       }
       setShowModal(false);
       load();

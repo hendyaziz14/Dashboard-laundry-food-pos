@@ -1,0 +1,24 @@
+{
+  "name": "laundry-food-pos",
+  "version": "1.0.0",
+  "description": "Aplikasi POS (Point of Sale) full-stack untuk bisnis kombinasi **laundry & makanan**. Dibuat berdasarkan hasil review rekaman layar aplikasi referensi (dashboard, transaksi laundry, kasir makanan, karyawan, absensi, inventory, dan laporan).",
+  "main": "index.js",
+  "scripts": {
+  "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hendyaziz14/Dashboard-laundry-food-pos.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/hendyaziz14/Dashboard-laundry-food-pos/issues"
+  },
+  "homepage": "https://github.com/hendyaziz14/Dashboard-laundry-food-pos#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.4"
+  }
+}
