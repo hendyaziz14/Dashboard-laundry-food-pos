@@ -92,7 +92,7 @@ app.use((err, req, res, next) => {
 // 6. Start Single Server Instance
 async function start() {
   try {
-    await pool.ensureOrdersTable();
+    await pool.ensureTables();
     app.listen(PORT, () => {
       console.log(`✅ Laundry & Food POS backend berjalan di http://localhost:${PORT}`);
     });

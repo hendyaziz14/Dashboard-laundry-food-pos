@@ -12,21 +12,21 @@ router.post('/login', async (req, res) => {
     let user = null;
     try {
       const result = await pool.query(
-        'SELECT * FROM employees WHERE username = $1 LIMIT 1',
+        'SELECT * FROM users WHERE username = $1 LIMIT 1',
         [username]
       );
       if (result.rows.length > 0) {
         user = result.rows[0];
       }
     } catch (dbErr) {
-      console.log('ℹ️ Tabel employees belum dibuat/digunakan, menggunakan fallback login.');
+      console.log('ℹ️ Tabel users belum dibuat/digunakan, menggunakan fallback login.');
     }
 
     // 2. Fallback / Mock Authentikasi Sederhana (agar login selalu berhasil)
     if (!user) {
       if (username === 'admin' && password === 'admin123') {
         user = {
-          id: 1,
+          id: 'admin',
           username: 'admin',
           name: 'Administrator',
           role: 'owner'
@@ -34,7 +34,7 @@ router.post('/login', async (req, res) => {
       } else {
         // Jika Anda ingin akun apapun bisa masuk saat testing lokal:
         user = {
-          id: 99,
+          id: 'anonymous',
           username: username || 'admin',
           name: username || 'Admin',
           role: 'owner'
