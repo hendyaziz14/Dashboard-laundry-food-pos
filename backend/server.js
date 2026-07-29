@@ -93,6 +93,7 @@ app.use((err, req, res, next) => {
 async function start() {
   try {
     await pool.ensureTables();
+    await pool.seedInitialData();
     app.listen(PORT, () => {
       console.log(`✅ Laundry & Food POS backend berjalan di http://localhost:${PORT}`);
     });

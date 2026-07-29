@@ -1,6 +1,8 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { Pool } = require('pg');
+const bcrypt = require('bcryptjs');
+const { v4: uuid } = require('uuid');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -11,6 +13,13 @@ const pool = new Pool({
 });
 
 async function ensureTables() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS public.settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS public.users (
       id TEXT PRIMARY KEY,
@@ -126,6 +135,66 @@ async function ensureTables() {
   `);
 }
 
+async function seedInitialData() {
+  const defaultSettings = [
+    { key: 'business_name', value: 'Laundry & Food Corner' },
+  ];
+
+  for (const item of defaultSettings) {
+    await pool.query(
+      `INSERT INTO public.settings (key, value)
+       VALUES ($1, $2)
+       ON CONFLICT (key) DO NOTHING;`,
+      [item.key, item.value]
+    );
+  }
+
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminHash = bcrypt.hashSync(adminPassword, 10);
+  await pool.query(
+    `INSERT INTO public.users (id, username, password_hash, name, role)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (username) DO NOTHING;`,
+    ['admin', process.env.ADMIN_USERNAME || 'admin', adminHash, 'Admin', 'owner']
+  );
+
+  const laundryServices = [
+    { id: 'svc-kering', name: 'Cuci Kering', price_per_kg: 6000, eta_hours: 48 },
+    { id: 'svc-setrika', name: 'Cuci + Setrika', price_per_kg: 8000, eta_hours: 48 },
+    { id: 'svc-express', name: 'Cuci Express (Sehari Jadi)', price_per_kg: 12000, eta_hours: 24 },
+    { id: 'svc-setrika-saja', name: 'Setrika Saja', price_per_kg: 5000, eta_hours: 24 },
+  ];
+
+  for (const service of laundryServices) {
+    await pool.query(
+      `INSERT INTO public.laundry_services (id, name, price_per_kg, eta_hours)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO NOTHING;`,
+      [service.id, service.name, service.price_per_kg, service.eta_hours]
+    );
+  }
+
+  const defaultProducts = [
+    { id: uuid(), name: 'Nasi Goreng Spesial', category: 'Makanan Berat', price: 18000 },
+    { id: uuid(), name: 'Mie Goreng Ayam', category: 'Makanan Berat', price: 16000 },
+    { id: uuid(), name: 'Ayam Geprek', category: 'Makanan Berat', price: 15000 },
+    { id: uuid(), name: 'Es Teh Manis', category: 'Minuman', price: 5000 },
+    { id: uuid(), name: 'Es Jeruk', category: 'Minuman', price: 6000 },
+    { id: uuid(), name: 'Kopi Susu', category: 'Minuman', price: 8000 },
+    { id: uuid(), name: 'Pisang Goreng', category: 'Snack', price: 7000 },
+    { id: uuid(), name: 'Risoles', category: 'Snack', price: 6000 },
+  ];
+
+  for (const product of defaultProducts) {
+    await pool.query(
+      `INSERT INTO public.food_products (id, name, category, price, is_active)
+       VALUES ($1, $2, $3, $4, true)
+       ON CONFLICT (id) DO NOTHING;`,
+      [product.id, product.name, product.category, product.price]
+    );
+  }
+}
+
 pool.connect((err, client, release) => {
   if (err) {
     return console.error('❌ Gagal terhubung ke PostgreSQL:', err.stack);
@@ -135,4 +204,5 @@ pool.connect((err, client, release) => {
 });
 
 pool.ensureTables = ensureTables;
+pool.seedInitialData = seedInitialData;
 module.exports = pool;
