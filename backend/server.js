@@ -17,9 +17,21 @@ const syncRoutes = require("./src/routes/sync.routes");
 
 const app = express();
 const PORT = process.env.PORT || 4002;
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Origin tidak diizinkan oleh CORS."));
+  },
+  credentials: true,
+};
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // 1. Health Check Endpoint

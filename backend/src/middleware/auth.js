@@ -18,4 +18,14 @@ function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { requireAuth };
+function requireRole(allowedRoles = []) {
+  return (req, res, next) => {
+    const role = req.user?.role || "owner";
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({ message: "Akses ditolak untuk role ini." });
+    }
+    next();
+  };
+}
+
+module.exports = { requireAuth, requireRole };
