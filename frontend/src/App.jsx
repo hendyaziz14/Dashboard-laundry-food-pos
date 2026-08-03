@@ -11,9 +11,9 @@ import Absensi from "./pages/Absensi.jsx";
 import Inventory from "./pages/Inventory.jsx";
 import Laporan from "./pages/Laporan.jsx";
 
-function withProtection(Component) {
+function withProtection(Component, options = {}) {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute {...options}>
       <Component />
     </ProtectedRoute>
   );
@@ -25,9 +25,9 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={withProtection(Dashboard)} />
       <Route path="/laundry" element={withProtection(LaundryPOS)} />
-      <Route path="/kasir" element={withProtection(FoodPOS)} />
-      <Route path="/orders" element={withProtection(Riwayat)} />
-      <Route path="/menu" element={withProtection(Menu)} />
+      <Route path="/kasir" element={withProtection(FoodPOS, { denyRoles: ["owner"] })} />
+      <Route path="/orders" element={withProtection(Riwayat, { denyRoles: ["owner"] })} />
+      <Route path="/menu" element={withProtection(Menu, { denyRoles: ["owner"] })} />
       <Route path="/karyawan" element={withProtection(Karyawan)} />
       <Route path="/absensi" element={withProtection(Absensi)} />
       <Route path="/inventory" element={withProtection(Inventory)} />
