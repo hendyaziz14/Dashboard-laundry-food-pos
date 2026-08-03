@@ -17,15 +17,18 @@ const syncRoutes = require("./src/routes/sync.routes");
 
 const app = express();
 const PORT = process.env.PORT || 4002;
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "*").split(",").map((s) => s.trim()).filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes("*")) {
       return callback(null, true);
     }
-    return callback(new Error("Origin tidak diizinkan oleh CORS."));
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, true);
   },
   credentials: true,
 };

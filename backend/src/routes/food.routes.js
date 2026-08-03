@@ -2,16 +2,16 @@ const express = require("express");
 const { v4: uuid } = require("uuid");
 const pool = require("../../db");
 const { readDB, writeDB } = require("../db");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.get("/products", requireAuth, requireRole(["owner", "kasir"]), (req, res) => {
+router.get("/products", requireAuth, (req, res) => {
   const db = readDB();
   res.json({ products: db.foodProducts.filter((p) => p.isActive !== false) });
 });
 
-router.post("/products", requireAuth, requireRole(["owner", "kasir"]), (req, res) => {
+router.post("/products", requireAuth, (req, res) => {
   const db = readDB();
   const { name, category, price } = req.body || {};
 
@@ -32,7 +32,7 @@ router.post("/products", requireAuth, requireRole(["owner", "kasir"]), (req, res
   res.status(201).json({ product });
 });
 
-router.put("/products/:id", requireAuth, requireRole(["owner", "kasir"]), (req, res) => {
+router.put("/products/:id", requireAuth, (req, res) => {
   const db = readDB();
   const product = db.foodProducts.find((p) => p.id === req.params.id);
   if (!product) return res.status(404).json({ message: "Produk tidak ditemukan." });
@@ -47,7 +47,7 @@ router.put("/products/:id", requireAuth, requireRole(["owner", "kasir"]), (req, 
   res.json({ product });
 });
 
-router.delete("/products/:id", requireAuth, requireRole(["owner", "kasir"]), (req, res) => {
+router.delete("/products/:id", requireAuth, (req, res) => {
   const db = readDB();
   const idx = db.foodProducts.findIndex((p) => p.id === req.params.id);
   if (idx === -1) return res.status(404).json({ message: "Produk tidak ditemukan." });
@@ -57,13 +57,13 @@ router.delete("/products/:id", requireAuth, requireRole(["owner", "kasir"]), (re
   res.json({ success: true });
 });
 
-router.get("/orders", requireAuth, requireRole(["owner", "kasir"]), (req, res) => {
+router.get("/orders", requireAuth, (req, res) => {
   const db = readDB();
   const orders = [...db.foodOrders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json({ orders });
 });
 
-router.post("/orders", requireAuth, requireRole(["owner", "kasir"]), async (req, res) => {
+router.post("/orders", requireAuth, async (req, res) => {
   const db = readDB();
   const { items = [], paymentMethod = "Cash", customerName = "" } = req.body || {};
 

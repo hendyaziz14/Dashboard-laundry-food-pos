@@ -33,12 +33,6 @@ const accentClasses = {
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const visibleNavItems = navItems.filter((item) => {
-    if (user?.role === "owner" && ["/kasir", "/orders", "/menu"].includes(item.to)) {
-      return false;
-    }
-    return true;
-  });
 
   return (
     <aside className="flex h-screen w-64 flex-col bg-ink text-slate-300 font-body">
@@ -50,7 +44,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {visibleNavItems.map(({ to, label, icon: Icon, accent }) => (
+        {navItems.map(({ to, label, icon: Icon, accent }) => (
           <NavLink
             key={to}
             to={to}
