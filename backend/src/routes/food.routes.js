@@ -5,13 +5,13 @@ const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-/**
- * GET /food/products
- * Ambil produk makanan aktif
- */
+/* =========================================================
+   GET PRODUCTS
+   Hanya produk yang aktif yang dikirim ke kasir
+========================================================= */
 router.get("/products", requireAuth, async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { rows } = await pool.query(`
       SELECT
         id,
         name,
@@ -21,25 +21,50 @@ router.get("/products", requireAuth, async (req, res) => {
         created_at AS "createdAt"
       FROM public.food_products
       WHERE is_active = true
-      ORDER BY category ASC, name ASC
+      ORDER BY category, name
     `);
 
-    res.json({
-      products: result.rows,
-    });
+    res.json({ products: rows });
   } catch (err) {
-    console.error("GET /food/products error:", err);
-
+    console.error("GET /food/products:", err);
     res.status(500).json({
-      message: "Gagal mengambil produk makanan.",
+      message: "Gagal mengambil daftar produk.",
     });
   }
 });
 
-/**
- * POST /food/products
- * Tambah produk makanan
- */
+
+/* =========================================================
+   GET ALL PRODUCTS
+   Untuk halaman admin/manage menu
+========================================================= */
+router.get("/products/all", requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        id,
+        name,
+        category,
+        price,
+        is_active AS "isActive",
+        created_at AS "createdAt"
+      FROM public.food_products
+      ORDER BY category, name
+    `);
+
+    res.json({ products: rows });
+  } catch (err) {
+    console.error("GET /food/products/all:", err);
+    res.status(500).json({
+      message: "Gagal mengambil semua produk.",
+    });
+  }
+});
+
+
+/* =========================================================
+   ADD PRODUCT
+========================================================= */
 router.post("/products", requireAuth, async (req, res) => {
   try {
     const {
@@ -48,7 +73,7 @@ router.post("/products", requireAuth, async (req, res) => {
       price,
     } = req.body || {};
 
-    if (!name?.trim() || !category?.trim() || price === undefined) {
+    if (!name || !category || price === undefined) {
       return res.status(400).json({
         message: "Nama, kategori, dan harga wajib diisi.",
       });
@@ -58,30 +83,18 @@ router.post("/products", requireAuth, async (req, res) => {
 
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
       return res.status(400).json({
-        message: "Harga produk tidak valid.",
+        message: "Harga tidak valid.",
       });
     }
 
     const id = uuid();
 
-    const result = await pool.query(
+    const { rows } = await pool.query(
       `
       INSERT INTO public.food_products
-        (
-          id,
-          name,
-          category,
-          price,
-          is_active
-        )
+        (id, name, category, price, is_active)
       VALUES
-        (
-          $1,
-          $2,
-          $3,
-          $4,
-          true
-        )
+        ($1, $2, $3, $4, true)
       RETURNING
         id,
         name,
@@ -99,23 +112,24 @@ router.post("/products", requireAuth, async (req, res) => {
     );
 
     res.status(201).json({
-      product: result.rows[0],
+      product: rows[0],
     });
   } catch (err) {
-    console.error("POST /food/products error:", err);
-
+    console.error("POST /food/products:", err);
     res.status(500).json({
-      message: "Gagal menambahkan produk makanan.",
+      message: "Gagal menambahkan produk.",
     });
   }
 });
 
-/**
- * PUT /food/products/:id
- * Edit produk makanan
- */
+
+/* =========================================================
+   UPDATE PRODUCT
+========================================================= */
 router.put("/products/:id", requireAuth, async (req, res) => {
   try {
+    const { id } = req.params;
+
     const {
       name,
       category,
@@ -129,7 +143,7 @@ router.put("/products/:id", requireAuth, async (req, res) => {
       FROM public.food_products
       WHERE id = $1
       `,
-      [req.params.id]
+      [id]
     );
 
     if (existing.rows.length === 0) {
@@ -138,41 +152,41 @@ router.put("/products/:id", requireAuth, async (req, res) => {
       });
     }
 
-    const current = existing.rows[0];
+    const product = existing.rows[0];
 
-    const nextName =
+    const newName =
       name !== undefined
         ? String(name).trim()
-        : current.name;
+        : product.name;
 
-    const nextCategory =
+    const newCategory =
       category !== undefined
         ? String(category).trim()
-        : current.category;
+        : product.category;
 
-    const nextPrice =
+    const newPrice =
       price !== undefined
         ? Number(price)
-        : Number(current.price);
+        : Number(product.price);
 
-    const nextIsActive =
+    const newIsActive =
       isActive !== undefined
         ? Boolean(isActive)
-        : current.is_active;
+        : product.is_active;
 
-    if (!nextName || !nextCategory) {
+    if (!newName || !newCategory) {
       return res.status(400).json({
         message: "Nama dan kategori wajib diisi.",
       });
     }
 
-    if (!Number.isFinite(nextPrice) || nextPrice < 0) {
+    if (!Number.isFinite(newPrice) || newPrice < 0) {
       return res.status(400).json({
-        message: "Harga produk tidak valid.",
+        message: "Harga tidak valid.",
       });
     }
 
-    const result = await pool.query(
+    const { rows } = await pool.query(
       `
       UPDATE public.food_products
       SET
@@ -190,46 +204,94 @@ router.put("/products/:id", requireAuth, async (req, res) => {
         created_at AS "createdAt"
       `,
       [
-        nextName,
-        nextCategory,
-        nextPrice,
-        nextIsActive,
-        req.params.id,
+        newName,
+        newCategory,
+        newPrice,
+        newIsActive,
+        id,
       ]
     );
 
     res.json({
-      product: result.rows[0],
+      product: rows[0],
     });
   } catch (err) {
-    console.error("PUT /food/products error:", err);
-
+    console.error("PUT /food/products/:id:", err);
     res.status(500).json({
-      message: "Gagal memperbarui produk makanan.",
+      message: "Gagal mengubah produk.",
     });
   }
 });
 
-/**
- * DELETE /food/products/:id
- * Soft delete produk
- *
- * Produk tidak benar-benar dihapus.
- * Hanya dibuat tidak aktif.
- */
+
+/* =========================================================
+   TOGGLE ACTIVE / NONACTIVE
+========================================================= */
+router.patch("/products/:id/status", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body || {};
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        message: "isActive harus berupa true atau false.",
+      });
+    }
+
+    const { rows } = await pool.query(
+      `
+      UPDATE public.food_products
+      SET is_active = $1
+      WHERE id = $2
+      RETURNING
+        id,
+        name,
+        category,
+        price,
+        is_active AS "isActive"
+      `,
+      [isActive, id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        message: "Produk tidak ditemukan.",
+      });
+    }
+
+    res.json({
+      product: rows[0],
+      message: isActive
+        ? "Menu berhasil diaktifkan."
+        : "Menu berhasil dinonaktifkan.",
+    });
+  } catch (err) {
+    console.error("PATCH /food/products/:id/status:", err);
+    res.status(500).json({
+      message: "Gagal mengubah status menu.",
+    });
+  }
+});
+
+
+/* =========================================================
+   DELETE PRODUCT
+   Soft delete = nonaktifkan, bukan hapus
+========================================================= */
 router.delete("/products/:id", requireAuth, async (req, res) => {
   try {
+    const { id } = req.params;
+
     const result = await pool.query(
       `
       UPDATE public.food_products
       SET is_active = false
       WHERE id = $1
-      RETURNING id
       `,
-      [req.params.id]
+      [id]
     );
 
-    if (result.rows.length === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({
         message: "Produk tidak ditemukan.",
       });
@@ -237,23 +299,23 @@ router.delete("/products/:id", requireAuth, async (req, res) => {
 
     res.json({
       success: true,
+      message: "Menu berhasil dinonaktifkan.",
     });
   } catch (err) {
-    console.error("DELETE /food/products error:", err);
-
+    console.error("DELETE /food/products/:id:", err);
     res.status(500).json({
-      message: "Gagal menonaktifkan produk makanan.",
+      message: "Gagal menonaktifkan produk.",
     });
   }
 });
 
-/**
- * GET /food/orders
- * Ambil seluruh pesanan makanan
- */
+
+/* =========================================================
+   GET FOOD ORDERS
+========================================================= */
 router.get("/orders", requireAuth, async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { rows } = await pool.query(`
       SELECT
         id,
         order_no AS "orderNo",
@@ -268,102 +330,70 @@ router.get("/orders", requireAuth, async (req, res) => {
       ORDER BY created_at DESC
     `);
 
-    res.json({
-      orders: result.rows,
-    });
+    res.json({ orders: rows });
   } catch (err) {
-    console.error("GET /food/orders error:", err);
-
+    console.error("GET /food/orders:", err);
     res.status(500).json({
       message: "Gagal mengambil pesanan makanan.",
     });
   }
 });
 
-/**
- * POST /food/orders
- * Membuat pesanan makanan
- */
+
+/* =========================================================
+   CREATE FOOD ORDER
+========================================================= */
 router.post("/orders", requireAuth, async (req, res) => {
-  const {
-    items = [],
-    paymentMethod = "Cash",
-    customerName = "",
-  } = req.body || {};
-
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({
-      message: "Keranjang wajib berisi minimal 1 item.",
-    });
-  }
-
   const client = await pool.connect();
 
   try {
-    await client.query("BEGIN");
+    const {
+      items = [],
+      paymentMethod = "Cash",
+      customerName = "",
+    } = req.body || {};
 
-    /**
-     * Ambil ID produk yang digunakan.
-     */
-    const productIds = [
-      ...new Set(
-        items
-          .map((item) => item.productId)
-          .filter(Boolean)
-      ),
-    ];
-
-    if (productIds.length === 0) {
-      throw new Error("Produk tidak valid.");
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        message: "Keranjang wajib berisi minimal 1 item.",
+      });
     }
 
-    /**
-     * Ambil harga produk langsung dari PostgreSQL.
-     *
-     * Jangan percaya harga dari frontend.
-     */
-    const productResult = await client.query(
-      `
-      SELECT
-        id,
-        name,
-        price,
-        is_active
-      FROM public.food_products
-      WHERE id = ANY($1::text[])
-      `,
-      [productIds]
-    );
-
-    const productMap = new Map(
-      productResult.rows.map((product) => [
-        product.id,
-        product,
-      ])
-    );
+    await client.query("BEGIN");
 
     const normalizedItems = [];
 
     for (const item of items) {
-      const product = productMap.get(item.productId);
+      const qty = Number(item.qty);
 
-      if (!product) {
+      if (!Number.isInteger(qty) || qty <= 0) {
+        throw new Error("Jumlah produk tidak valid.");
+      }
+
+      const result = await client.query(
+        `
+        SELECT
+          id,
+          name,
+          price,
+          is_active
+        FROM public.food_products
+        WHERE id = $1
+        `,
+        [item.productId]
+      );
+
+      if (result.rows.length === 0) {
         throw new Error(
           `Produk ${item.productId} tidak ditemukan.`
         );
       }
 
+      const product = result.rows[0];
+
       if (!product.is_active) {
         throw new Error(
-          `Produk ${product.name} sedang tidak aktif.`
-        );
-      }
-
-      const qty = Number(item.qty);
-
-      if (!Number.isInteger(qty) || qty <= 0) {
-        throw new Error(
-          `Jumlah ${product.name} tidak valid.`
+          `Produk ${product.name} sedang tidak tersedia.`
         );
       }
 
@@ -378,42 +408,39 @@ router.post("/orders", requireAuth, async (req, res) => {
       });
     }
 
-    /**
-     * Hitung total dari harga database.
-     */
     const total = normalizedItems.reduce(
       (sum, item) => sum + item.subtotal,
       0
     );
 
-    /**
-     * Generate nomor transaksi.
-     * FD-0001
-     * FD-0002
-     * dst.
-     */
     const counterResult = await client.query(`
-      SELECT
-        COALESCE(
-          MAX(
-            NULLIF(
-              REGEXP_REPLACE(order_no, '[^0-9]', '', 'g'),
-              ''
-            )::INTEGER
-          ),
-          0
-        ) + 1 AS next_number
+      SELECT order_no
       FROM public.food_orders
       WHERE order_no LIKE 'FD-%'
+      ORDER BY created_at DESC
+      LIMIT 1
+      FOR UPDATE
     `);
 
-    const nextNumber = Number(
-      counterResult.rows[0]?.next_number || 1
-    );
+    let counter = 0;
 
-    const orderNo = `FD-${String(nextNumber).padStart(4, "0")}`;
+    if (counterResult.rows.length > 0) {
+      const lastNumber = Number(
+        String(counterResult.rows[0].order_no)
+          .replace("FD-", "")
+      );
 
-    const id = uuid();
+      if (Number.isFinite(lastNumber)) {
+        counter = lastNumber;
+      }
+    }
+
+    counter += 1;
+
+    const orderNo =
+      `FD-${String(counter).padStart(4, "0")}`;
+
+    const orderId = uuid();
 
     const result = await client.query(
       `
@@ -429,16 +456,7 @@ router.post("/orders", requireAuth, async (req, res) => {
           notes
         )
       VALUES
-        (
-          $1,
-          $2,
-          $3,
-          $4::jsonb,
-          $5,
-          $6,
-          $7,
-          $8
-        )
+        ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING
         id,
         order_no AS "orderNo",
@@ -451,9 +469,9 @@ router.post("/orders", requireAuth, async (req, res) => {
         created_at AS "createdAt"
       `,
       [
-        id,
+        orderId,
         orderNo,
-        customerName?.trim() || "Pelanggan Umum",
+        customerName || "Pelanggan Umum",
         JSON.stringify(normalizedItems),
         total,
         paymentMethod,
@@ -470,15 +488,15 @@ router.post("/orders", requireAuth, async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
 
-    console.error("POST /food/orders error:", err);
+    console.error("POST /food/orders:", err);
 
-    res.status(500).json({
-      message:
-        err.message || "Gagal membuat pesanan makanan.",
+    res.status(400).json({
+      message: err.message || "Gagal membuat pesanan.",
     });
   } finally {
     client.release();
   }
 });
+
 
 module.exports = router;

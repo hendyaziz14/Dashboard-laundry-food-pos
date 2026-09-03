@@ -19,8 +19,8 @@ export default function FoodPOS() {
   const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
-    api.get("/food/products").then(({ data }) => setProducts(data.products));
-  }, []);
+  api.get("/food/products").then(({ data }) => setProducts(data.products));
+}, []);
 
   const categories = useMemo(() => {
     const set = new Set(products.map((p) => p.category));
