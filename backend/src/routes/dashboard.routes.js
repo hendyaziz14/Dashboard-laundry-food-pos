@@ -1,69 +1,282 @@
 const express = require("express");
-const { readDB } = require("../db");
+const pool = require("../../db");
 const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-function isToday(isoDate) {
-  const d = new Date(isoDate);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-}
+// =====================================================
+// DASHBOARD SUMMARY
+// =====================================================
 
-router.get("/summary", requireAuth, (req, res) => {
-  const db = readDB();
+router.get("/summary", requireAuth, async (req, res) => {
+  try {
+    // ===================================================
+    // BUSINESS NAME
+    // ===================================================
 
-  const laundryToday = db.laundryOrders.filter((o) => isToday(o.createdAt));
-  const foodToday = db.foodOrders.filter((o) => isToday(o.createdAt));
+    const settingsResult = await pool.query(`
+      SELECT value
+      FROM public.settings
+      WHERE key = 'business_name'
+      LIMIT 1
+    `);
 
-  const laundryRevenueToday = laundryToday.reduce((sum, o) => sum + o.total, 0);
-  const foodRevenueToday = foodToday.reduce((sum, o) => sum + o.total, 0);
+    const businessName =
+      settingsResult.rows[0]?.value ||
+      "Laundry & Food Corner";
 
-  const activeLaundryOrders = db.laundryOrders.filter(
-    (o) => !["Selesai", "Dibatalkan"].includes(o.status)
-  ).length;
+    // ===================================================
+    // LAUNDRY HARI INI
+    // ===================================================
 
-  const recentLaundry = [...db.laundryOrders]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5)
-    .map((order) => ({
-      ...order,
-      customerName: order.customerName || "Pelanggan",
-      orderNo: order.orderNo || "-",
-      items: order.items || [],
-      total: Number(order.total) || 0,
-      status: order.status || "Diterima",
-      serviceName: order.items?.[0]?.serviceName || "Layanan",
-      weightKg: order.items?.[0]?.weightKg || 0,
-    }));
+    const laundryTodayResult = await pool.query(`
+      SELECT
+        id,
+        order_no,
+        customer_name,
+        items,
+        total_amount,
+        status,
+        payment_method,
+        created_at
+      FROM public.laundry_orders
+      WHERE created_at >= CURRENT_DATE
+        AND created_at < CURRENT_DATE + INTERVAL '1 day'
+      ORDER BY created_at DESC
+    `);
 
-  const recentFood = [...db.foodOrders]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5)
-    .map((order) => ({
-      ...order,
-      orderNo: order.orderNo || "-",
-      items: order.items || [],
-      total: Number(order.total) || 0,
-      paymentMethod: order.paymentMethod || "Cash",
-    }));
+    const laundryToday = laundryTodayResult.rows;
 
-  res.json({
-    businessName: db.settings.businessName,
-    todayRevenue: laundryRevenueToday + foodRevenueToday,
-    laundryRevenueToday,
-    foodRevenueToday,
-    activeLaundryOrders,
-    foodOrdersToday: foodToday.length,
-    laundryOrdersToday: laundryToday.length,
-    totalLaundryOrders: db.laundryOrders.length,
-    recentLaundry,
-    recentFood,
-  });
+    // ===================================================
+    // FOOD HARI INI
+    // ===================================================
+
+    const foodTodayResult = await pool.query(`
+      SELECT
+        id,
+        order_no,
+        customer_name,
+        items,
+        total_amount,
+        status,
+        payment_method,
+        created_at
+      FROM public.food_orders
+      WHERE created_at >= CURRENT_DATE
+        AND created_at < CURRENT_DATE + INTERVAL '1 day'
+      ORDER BY created_at DESC
+    `);
+
+    const foodToday = foodTodayResult.rows;
+
+    // ===================================================
+    // REVENUE
+    // ===================================================
+
+    const laundryRevenueToday =
+      laundryToday.reduce(
+        (sum, order) =>
+          sum + Number(order.total_amount || 0),
+        0
+      );
+
+    const foodRevenueToday =
+      foodToday.reduce(
+        (sum, order) =>
+          sum + Number(order.total_amount || 0),
+        0
+      );
+
+    // ===================================================
+    // LAUNDRY AKTIF
+    // ===================================================
+
+    const activeLaundryResult = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM public.laundry_orders
+      WHERE status NOT IN ('Selesai', 'Dibatalkan')
+    `);
+
+    const activeLaundryOrders =
+      Number(activeLaundryResult.rows[0]?.total || 0);
+
+    // ===================================================
+    // TOTAL LAUNDRY
+    // ===================================================
+
+    const totalLaundryResult = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM public.laundry_orders
+    `);
+
+    const totalLaundryOrders =
+      Number(totalLaundryResult.rows[0]?.total || 0);
+
+    // ===================================================
+    // RECENT LAUNDRY
+    // ===================================================
+
+    const recentLaundryResult = await pool.query(`
+      SELECT
+        id,
+        order_no,
+        customer_name,
+        items,
+        total_amount,
+        status,
+        payment_method,
+        created_at
+      FROM public.laundry_orders
+      ORDER BY created_at DESC
+      LIMIT 5
+    `);
+
+    const recentLaundry =
+      recentLaundryResult.rows.map((order) => {
+
+        const items = Array.isArray(order.items)
+          ? order.items
+          : [];
+
+        const firstItem = items[0] || {};
+
+        return {
+          id: order.id,
+
+          customerName:
+            order.customer_name ||
+            "Pelanggan",
+
+          orderNo:
+            order.order_no ||
+            "-",
+
+          items,
+
+          total:
+            Number(order.total_amount) || 0,
+
+          status:
+            order.status ||
+            "Diterima",
+
+          paymentMethod:
+            order.payment_method ||
+            "Cash",
+
+          createdAt:
+            order.created_at,
+
+          serviceName:
+            firstItem.serviceName ||
+            "Layanan",
+
+          weightKg:
+            Number(firstItem.weightKg) || 0,
+        };
+      });
+
+    // ===================================================
+    // RECENT FOOD
+    // ===================================================
+
+    const recentFoodResult = await pool.query(`
+      SELECT
+        id,
+        order_no,
+        customer_name,
+        items,
+        total_amount,
+        status,
+        payment_method,
+        created_at
+      FROM public.food_orders
+      ORDER BY created_at DESC
+      LIMIT 5
+    `);
+
+    const recentFood =
+      recentFoodResult.rows.map((order) => {
+
+        const items = Array.isArray(order.items)
+          ? order.items
+          : [];
+
+        return {
+          id: order.id,
+
+          orderNo:
+            order.order_no ||
+            "-",
+
+          customerName:
+            order.customer_name ||
+            "Pelanggan",
+
+          items,
+
+          total:
+            Number(order.total_amount) || 0,
+
+          status:
+            order.status ||
+            "Selesai",
+
+          paymentMethod:
+            order.payment_method ||
+            "Cash",
+
+          createdAt:
+            order.created_at,
+        };
+      });
+
+    // ===================================================
+    // RESPONSE
+    // ===================================================
+
+    res.json({
+      businessName,
+
+      todayRevenue:
+        laundryRevenueToday +
+        foodRevenueToday,
+
+      laundryRevenueToday,
+
+      foodRevenueToday,
+
+      activeLaundryOrders,
+
+      foodOrdersToday:
+        foodToday.length,
+
+      laundryOrdersToday:
+        laundryToday.length,
+
+      totalLaundryOrders,
+
+      recentLaundry,
+
+      recentFood,
+    });
+
+  } catch (error) {
+
+    console.error(
+      "❌ Dashboard error:",
+      error
+    );
+
+    res.status(500).json({
+      message:
+        "Gagal mengambil data dashboard.",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : undefined,
+    });
+  }
 });
 
 module.exports = router;
