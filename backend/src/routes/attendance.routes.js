@@ -1,5 +1,5 @@
 const express = require("express");
-const { readDB, writeDB } = require("../db");
+const pool = require("../../db");
 const { requireAuth } = require("../middleware/auth");
 const { v4: uuid } = require("uuid");
 
