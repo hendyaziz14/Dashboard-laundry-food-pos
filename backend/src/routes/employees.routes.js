@@ -1,7 +1,7 @@
 const express = require("express");
 const { v4: uuid } = require("uuid");
 
-const pool = require("../db");
+const pool = require("../../db");
 const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
