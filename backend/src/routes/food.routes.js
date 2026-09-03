@@ -17,9 +17,10 @@ router.get("/products", requireAuth, async (req, res) => {
         name,
         category,
         price,
+        stock,
         is_active AS "isActive",
         created_at AS "createdAt"
-      FROM public.food_products
+      FROM public.menu
       WHERE is_active = true
       ORDER BY category, name
     `);
@@ -27,8 +28,9 @@ router.get("/products", requireAuth, async (req, res) => {
     res.json({ products: rows });
   } catch (err) {
     console.error("GET /food/products:", err);
+
     res.status(500).json({
-      message: "Gagal mengambil daftar produk.",
+      message: "Gagal mengambil daftar menu.",
     });
   }
 });

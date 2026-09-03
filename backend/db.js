@@ -176,15 +176,55 @@ async function seedInitialData() {
   }
 
   const defaultProducts = [
-    { id: uuid(), name: 'Nasi Goreng Spesial', category: 'Makanan Berat', price: 18000 },
-    { id: uuid(), name: 'Mie Goreng Ayam', category: 'Makanan Berat', price: 16000 },
-    { id: uuid(), name: 'Ayam Geprek', category: 'Makanan Berat', price: 15000 },
-    { id: uuid(), name: 'Es Teh Manis', category: 'Minuman', price: 5000 },
-    { id: uuid(), name: 'Es Jeruk', category: 'Minuman', price: 6000 },
-    { id: uuid(), name: 'Kopi Susu', category: 'Minuman', price: 8000 },
-    { id: uuid(), name: 'Pisang Goreng', category: 'Snack', price: 7000 },
-    { id: uuid(), name: 'Risoles', category: 'Snack', price: 6000 },
-  ];
+  {
+    id: "food-nasi-goreng-spesial",
+    name: "Nasi Goreng Spesial",
+    category: "Makanan Berat",
+    price: 18000,
+  },
+  {
+    id: "food-mie-goreng-ayam",
+    name: "Mie Goreng Ayam",
+    category: "Makanan Berat",
+    price: 16000,
+  },
+  {
+    id: "food-ayam-geprek",
+    name: "Ayam Geprek",
+    category: "Makanan Berat",
+    price: 15000,
+  },
+  {
+    id: "food-es-teh-manis",
+    name: "Es Teh Manis",
+    category: "Minuman",
+    price: 5000,
+  },
+  {
+    id: "food-es-jeruk",
+    name: "Es Jeruk",
+    category: "Minuman",
+    price: 6000,
+  },
+  {
+    id: "food-kopi-susu",
+    name: "Kopi Susu",
+    category: "Minuman",
+    price: 8000,
+  },
+  {
+    id: "food-pisang-goreng",
+    name: "Pisang Goreng",
+    category: "Snack",
+    price: 7000,
+  },
+  {
+    id: "food-risoles",
+    name: "Risoles",
+    category: "Snack",
+    price: 6000,
+  },
+];
 
   for (const product of defaultProducts) {
     await pool.query(
