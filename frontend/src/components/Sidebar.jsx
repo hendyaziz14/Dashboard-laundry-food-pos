@@ -51,13 +51,6 @@ const navItems = [
     accent: "food",
   },
 
-  {
-    to: "/food-Inventory",
-    label: "food-Inventory",
-    icon: TbClipboardList,
-    accent: "food",
-  },
-
   // =====================================================
   // INVENTORY
   // =====================================================
